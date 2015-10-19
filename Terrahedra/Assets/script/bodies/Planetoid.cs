@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using TG.MeshTools;
 
 public class Planetoid : MonoBehaviour {
 
@@ -10,7 +11,7 @@ public class Planetoid : MonoBehaviour {
 
 	void OnValidate() {
 		if (mesh != null) {
-			graph = new MeshTools(mesh).BuildFaceGraph();
+			graph = new WorkingMesh(mesh).BuildFaceGraph();
 		}
 		else {
 			graph = null;
