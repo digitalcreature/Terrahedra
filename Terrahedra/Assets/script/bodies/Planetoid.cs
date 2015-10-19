@@ -3,13 +3,25 @@ using System.Collections;
 
 public class Planetoid : MonoBehaviour {
 
-	// Use this for initialization
-	void Start () {
-	
+	public Mesh mesh;
+	public float nodeRadius = .1f;
+
+	NodeGraph graph;
+
+	void OnValidate() {
+		if (mesh != null) {
+			graph = new MeshTools(mesh).BuildFaceGraph();
+		}
+		else {
+			graph = null;
+		}
 	}
-	
-	// Update is called once per frame
-	void Update () {
-	
+
+	void OnDrawGizmosSelected() {
+		Gizmos.matrix = transform.localToWorldMatrix;
+		if (graph != null) {
+			graph.DrawGizmos(nodeRadius);
+		}
 	}
+
 }
