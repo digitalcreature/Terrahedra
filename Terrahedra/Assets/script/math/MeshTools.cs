@@ -1,124 +1,263 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using System;
 
-//util wrapper class for doing things with meshes
-public class MeshTools {
+namespace TG.MeshTools {
 
-	//the mesh we are working with
-	Mesh mesh;
-	//the triangles of the mesh
-	List<Triangle> triangles;
+	//util class to do things with meshes
+	public class WorkingMesh {
 
-	//constructor
-	public MeshTools(Mesh mesh) {
-		this.mesh = mesh;
-		Refresh();
-	}
+		//the vertices of the working mesh
+		List<Vertex> vertices;
+		//the faces of the working mesh
+		List<Face> faces;
 
-	//refresh mesh data. call after changing the mesh externally
-	public void Refresh() {
-		triangles = new List<Triangle>();
-		int t = 0;
-		while (t < mesh.triangles.Length) {
-			Vector3 a = mesh.vertices[mesh.triangles[t ++]];
-			Vector3 b = mesh.vertices[mesh.triangles[t ++]];
-			Vector3 c = mesh.vertices[mesh.triangles[t ++]];
-			triangles.Add(new Triangle(a, b, c));
+		//constructor
+		public WorkingMesh() {
+			vertices = new List<Vertex>();
+			faces = new List<Face>();
 		}
-	}
-
-	//builds a node graph of edge-wise connections between the faces of the mesh
-	public NodeGraph BuildFaceGraph() {
-		NodeGraph graph = new NodeGraph();
-		foreach (Triangle triangle in triangles) {
-			Node face = graph.AddNode(triangle.center);
-			foreach (Node node in graph.nodes) {
-				node.MakeNeighbor(face);
+		
+		//convenience overload
+		public WorkingMesh(params Mesh[] meshes) : this() {
+			foreach (Mesh mesh in meshes) {
+				AddMesh(mesh);
 			}
 		}
-		return graph;
+
+		//add the geometry of [mesh] to the working mesh
+		public void AddMesh(Mesh mesh) {
+			Dictionary<Vector3, Vertex> verts = new Dictionary<Vector3, Vertex>();
+			Vector3[] mVerts = mesh.vertices;
+			for (int v = 0; v < mVerts.Length; v ++) {
+				if (!verts.ContainsKey(mVerts[v])) {
+					Vertex vertex = new Vertex(mVerts[v]);
+					verts[mVerts[v]] = vertex;
+					vertices.Add(vertex);
+                }
+			}
+			int f = 0;
+			int[] mFaces = mesh.triangles;
+			while (f < mFaces.Length) {
+				Vertex a = verts[mVerts[mFaces[f++]]];
+				Vertex b = verts[mVerts[mFaces[f++]]];
+				Vertex c = verts[mVerts[mFaces[f++]]];
+				Face face = new Face(a, b, c);
+				faces.Add(face);
+			}
+		}
+
 	}
-}
 
-//a triangle in space
-public struct Triangle {
-	
-	//the vertices of the triangle
-	public Vector3 a, b, c;
+	//vertex of a mesh
+	public class Vertex : IFaceHaver, IEdgeHaver {
 
-	//the area of the triangle
-	public float area {
-		get {
-			return Vector3.Cross(a - b, a - c).magnitude / 2;
+		//position of the vertex
+		public Vector3 position;
+
+		//faces
+		HashSet<Face> faceSet;
+		public IEnumerable<Face> faces {
+			get {
+				foreach (Face face in faceSet) {
+					yield return face;
+				}
+			}
+		}
+
+		//edges
+		HashSet<Edge> edgeSet;
+		public IEnumerable<Edge> edges {
+			get {
+				foreach (Edge edge in edgeSet) {
+					yield return edge;
+				}
+			}
+		}
+
+		//constructor
+		public Vertex(Vector3 position) {
+			this.position = position;
+			position = this;
+			faceSet = new HashSet<Face>();
+			edgeSet = new HashSet<Edge>();
+		}
+
+		//vertices are also vectors
+		public static implicit operator Vector3(Vertex v) {
+			return v.position;
+		}
+
+		//adds a face to the vertex
+		public bool AddFace(Face face) {
+			if (face.ContainsVertex(this)) {
+				return faceSet.Add(face);
+			}
+			return false;
+		}
+
+		//adds an edge to the vertex
+		public bool AddEdge(Edge edge) {
+			if (edge.ContainsVertex(this)) {
+				return edgeSet.Add(edge);
+			}
+			return false;
 		}
 	}
-	
-	//the normal of the triangle
-	public Vector3 normal {
-		get {
-			return Vector3.Cross(c - a, b - a).normalized;
+
+	//face of a mesh
+	public class Face : IVertexHaver, IEdgeHaver {
+
+		//vertices
+		public readonly Vertex a, b, c;
+		public IEnumerable<Vertex> vertices {
+			get {
+				yield return a;
+				yield return b;
+				yield return c;
+			}
+		}
+
+		//edges
+		public readonly Edge ab, bc, ca;
+		public IEnumerable<Edge> edges {
+			get {
+				yield return ab;
+				yield return bc;
+				yield return ca;
+			}
+		}
+
+		//constructor
+		public Face(Vertex a, Vertex b, Vertex c) {
+			this.a = a;
+			this.b = b;
+			this.c = c;
+			ab = new Edge(a, b);
+			bc = new Edge(b, c);
+			ca = new Edge(c, a);
+			foreach (Vertex vertex in vertices) {
+				vertex.AddFace(this);
+			}
+			foreach (Edge edge in edges) {
+				edge.AddFace(this);
+			}
+		}
+
+		//you cant add new vertices to a face
+		public bool AddVertex(Vertex vertex) { return false; }
+		//you cant add new edges to a face
+		public bool AddEdge(Edge edge) { return false; }
+	}
+
+	//edge of a mesh
+	public class Edge : IVertexHaver, IFaceHaver {
+
+		//vertices
+		public readonly Vertex a, b;
+		public IEnumerable<Vertex> vertices {
+			get {
+				yield return a;
+				yield return b;
+			}
+		}
+
+		//faces
+		HashSet<Face> faceSet;
+		public IEnumerable<Face> faces {
+			get {
+				foreach(Face face in faceSet) {
+					yield return face;
+				}
+			}
+		}
+
+		//constructor
+		public Edge(Vertex a, Vertex b) {
+			this.a = a;
+			this.b = b;
+			faceSet = new HashSet<Face>();
+			foreach (Vertex vertex in vertices) {
+				vertex.AddEdge(this);
+			}
+		}
+
+		//you cant add new vertices to an edge
+		public bool AddVertex(Vertex vertex) { return false; }
+
+		//add a face to the edge
+		public bool AddFace(Face face) {
+			if (face.ContainsEdge(this)) {
+				return faceSet.Add(face);
+			}
+			return false;
 		}
 	}
 
-	//the center of the triangle
-	public Vector3 center {
-		get {
-			return (a + b + c) / 3;
+	//something containing vertices
+	public interface IVertexHaver {
+
+		IEnumerable<Vertex> vertices {
+			get;
 		}
+
+		bool AddVertex(Vertex vertex);
 	}
 
-	//the edges of the triangle
-	public IEnumerable<Segment> edges {
-		get {
-			yield return new Segment(a, b);
-			yield return new Segment(b, c);
-			yield return new Segment(c, a);
+	//something containing faces
+	public interface IFaceHaver {
+
+		IEnumerable<Face> faces {
+			get;
 		}
+
+		bool AddFace(Face face);
+
 	}
 
-	//the vertices of the triangle
-	public IEnumerable<Vector3> vertices {
-		get {
-			yield return a;
-			yield return b;
-			yield return c;
+	//something containing edges
+	public interface IEdgeHaver {
+
+		IEnumerable<Edge> edges {
+			get;
 		}
+
+		bool AddEdge(Edge edge);
 	}
 
-	//constructor
-	public Triangle(Vector3 a, Vector3 b, Vector3 c) {
-		this.a = a;
-		this.b = b;
-		this.c = c;
-	}
+	//haver extensions
+	public static class HaverE {
 
-}
-
-//a line segment in space
-public struct Segment {
-
-	//the vertices of the segment
-	public Vector3 a, b;
-
-	//length of the segment
-	public float length {
-		get {
-			return Mathf.Sqrt(sqrLength);
+		//return true if the vertex is part of this structure, false otherwise
+		public static bool ContainsVertex(this IVertexHaver haver, Vertex vertex) {
+			foreach (Vertex v in haver.vertices) {
+				if (v == vertex) {
+					return true;
+				}
+			}
+			return false;
 		}
-	}
 
-	//square length of the segment
-	public float sqrLength {
-		get {
-			return (a - b).sqrMagnitude;
+		//return true if the face is part of this structure, false otherwise
+		public static bool ContainsFace(this IFaceHaver haver, Face face) {
+			foreach (Face f in haver.faces) {
+				if (f == face) {
+					return true;
+				}
+			}
+			return false;
 		}
-	}
 
-	//constructor
-	public Segment(Vector3 a, Vector3 b) {
-		this.a = a;
-		this.b = b;
+		//return true if the edge is part of this structure, false otherwise
+		public static bool ContainsEdge(this IEdgeHaver haver, Edge edge) {
+			foreach (Edge e in haver.edges) {
+				if (e == edge) {
+					return true;
+				}
+			}
+			return false;
+		}
 	}
 
 }
