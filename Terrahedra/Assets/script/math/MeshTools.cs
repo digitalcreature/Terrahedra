@@ -5,259 +5,145 @@ using System;
 
 namespace TG.MeshTools {
 
-	//util class to do things with meshes
 	public class WorkingMesh {
 
-		//the vertices of the working mesh
-		List<Vertex> vertices;
-		//the faces of the working mesh
-		List<Face> faces;
+		HashSet<Vertex> vertexSet;
+		Dictionary<Vector3, Vertex> vertexCache;
 
-		//constructor
-		public WorkingMesh() {
-			vertices = new List<Vertex>();
-			faces = new List<Face>();
-		}
-		
-		//convenience overload
-		public WorkingMesh(params Mesh[] meshes) : this() {
-			foreach (Mesh mesh in meshes) {
-				AddMesh(mesh);
+		public IEnumerable<IVertex> vertices {
+			get {
+				foreach(Vertex vertex in vertexSet) {
+					yield return vertex;
+				}
 			}
 		}
 
-		//add the geometry of [mesh] to the working mesh
+		public WorkingMesh() {
+			vertexSet = new HashSet<Vertex>();
+			vertexCache = new Dictionary<Vector3, Vertex>();
+		}
+		public WorkingMesh(Mesh mesh) : this() {
+			AddMesh(mesh);
+		}
+
 		public void AddMesh(Mesh mesh) {
-			Dictionary<Vector3, Vertex> verts = new Dictionary<Vector3, Vertex>();
 			Vector3[] mVerts = mesh.vertices;
 			for (int v = 0; v < mVerts.Length; v ++) {
-				if (!verts.ContainsKey(mVerts[v])) {
-					Vertex vertex = new Vertex(mVerts[v]);
-					verts[mVerts[v]] = vertex;
-					vertices.Add(vertex);
-                }
-			}
-			int f = 0;
-			int[] mFaces = mesh.triangles;
-			while (f < mFaces.Length) {
-				Vertex a = verts[mVerts[mFaces[f++]]];
-				Vertex b = verts[mVerts[mFaces[f++]]];
-				Vertex c = verts[mVerts[mFaces[f++]]];
-				Face face = new Face(a, b, c);
-				faces.Add(face);
+				AddVertex(mVerts[v]);
 			}
 		}
 
-	}
+		public IVertex AddVertex(Vector3 position) {
+			Vertex vertex = new Vertex(this, position);
+			return vertex;
+		}
 
-	//vertex of a mesh
-	public class Vertex : IFaceHaver, IEdgeHaver {
+		//draw this mesh with unity3d's gizmo system
+		public void DrawGizmos(Color vertexColor, Color faceColor, Color edgeColor, float vertexRadius = 0.01f, float faceRadius = 0.01f) {
+			Gizmos.color = vertexColor;
+			foreach (Vertex vertex in vertexSet) {
+				Gizmos.DrawWireSphere(vertex.position, vertexRadius);
+			}
 
-		//position of the vertex
-		public Vector3 position;
+		}
+		public void DrawGizmos(float vertexRadius = 0.01f, float faceRadius = 0.01f) {
+			DrawGizmos(new Color(0.7f, 1, 1), new Color(1, 0.7f, 1), new Color(1, 1, 0.7f), vertexRadius, faceRadius);
+		}
 
-		//faces
-		HashSet<Face> faceSet;
-		public IEnumerable<Face> faces {
-			get {
-				foreach (Face face in faceSet) {
-					yield return face;
+		class Vertex : MeshComponent, IVertex {
+
+			public Vector3 position {
+				get {
+					return _pos;
+				}
+				set {
+					if (value != _pos) {
+						Vector3 old = _pos;
+						_pos = value;
+						Cache();
+						mesh.vertexCache.Remove(old);
+					}
+				}
+			}
+			Vector3 _pos;
+
+			public Vertex(WorkingMesh mesh, Vector3 position) : base(mesh) {
+				_pos = position;
+				mesh.vertexSet.Add(this);
+				Cache();
+			}
+
+			//place vertex in cache. if a vetex is already cached for this position, merge with it
+			void Cache() {
+				if (mesh.vertexCache.ContainsKey(position)) {
+					Vertex old = mesh.vertexCache[position];
+					//merge faces and edges here
+					mesh.vertexSet.Remove(old);
+				}
+				mesh.vertexCache[position] = this;
+			}
+		}
+
+		class Face : MeshComponent, IFace {
+
+
+
+			public Face(WorkingMesh mesh) : base(mesh) {
+
+			}
+
+			public IVertex a { get; set; }
+			public IVertex b { get; set; }
+			public IVertex c { get; set; }
+
+			public Vector3 center {
+				get {
+					return (a.position + b.position + c.position) / 3;
+				}
+				set {
+
 				}
 			}
 		}
 
-		//edges
-		HashSet<Edge> edgeSet;
-		public IEnumerable<Edge> edges {
-			get {
-				foreach (Edge edge in edgeSet) {
-					yield return edge;
-				}
+		class Edge : MeshComponent, IEdge {
+
+			public Edge(WorkingMesh mesh) : base(mesh) {
+
 			}
+
 		}
 
-		//constructor
-		public Vertex(Vector3 position) {
-			this.position = position;
-			position = this;
-			faceSet = new HashSet<Face>();
-			edgeSet = new HashSet<Edge>();
-		}
+		abstract class MeshComponent {
 
-		//vertices are also vectors
-		public static implicit operator Vector3(Vertex v) {
-			return v.position;
-		}
+			public readonly WorkingMesh mesh;
 
-		//adds a face to the vertex
-		public bool AddFace(Face face) {
-			if (face.ContainsVertex(this)) {
-				return faceSet.Add(face);
+			public MeshComponent(WorkingMesh mesh) {
+				this.mesh = mesh;
 			}
-			return false;
+
 		}
-
-		//adds an edge to the vertex
-		public bool AddEdge(Edge edge) {
-			if (edge.ContainsVertex(this)) {
-				return edgeSet.Add(edge);
-			}
-			return false;
-		}
-	}
-
-	//face of a mesh
-	public class Face : IVertexHaver, IEdgeHaver {
-
-		//vertices
-		public readonly Vertex a, b, c;
-		public IEnumerable<Vertex> vertices {
-			get {
-				yield return a;
-				yield return b;
-				yield return c;
-			}
-		}
-
-		//edges
-		public readonly Edge ab, bc, ca;
-		public IEnumerable<Edge> edges {
-			get {
-				yield return ab;
-				yield return bc;
-				yield return ca;
-			}
-		}
-
-		//constructor
-		public Face(Vertex a, Vertex b, Vertex c) {
-			this.a = a;
-			this.b = b;
-			this.c = c;
-			ab = new Edge(a, b);
-			bc = new Edge(b, c);
-			ca = new Edge(c, a);
-			foreach (Vertex vertex in vertices) {
-				vertex.AddFace(this);
-			}
-			foreach (Edge edge in edges) {
-				edge.AddFace(this);
-			}
-		}
-
-		//you cant add new vertices to a face
-		public bool AddVertex(Vertex vertex) { return false; }
-		//you cant add new edges to a face
-		public bool AddEdge(Edge edge) { return false; }
-	}
-
-	//edge of a mesh
-	public class Edge : IVertexHaver, IFaceHaver {
-
-		//vertices
-		public readonly Vertex a, b;
-		public IEnumerable<Vertex> vertices {
-			get {
-				yield return a;
-				yield return b;
-			}
-		}
-
-		//faces
-		HashSet<Face> faceSet;
-		public IEnumerable<Face> faces {
-			get {
-				foreach(Face face in faceSet) {
-					yield return face;
-				}
-			}
-		}
-
-		//constructor
-		public Edge(Vertex a, Vertex b) {
-			this.a = a;
-			this.b = b;
-			faceSet = new HashSet<Face>();
-			foreach (Vertex vertex in vertices) {
-				vertex.AddEdge(this);
-			}
-		}
-
-		//you cant add new vertices to an edge
-		public bool AddVertex(Vertex vertex) { return false; }
-
-		//add a face to the edge
-		public bool AddFace(Face face) {
-			if (face.ContainsEdge(this)) {
-				return faceSet.Add(face);
-			}
-			return false;
-		}
-	}
-
-	//something containing vertices
-	public interface IVertexHaver {
-
-		IEnumerable<Vertex> vertices {
-			get;
-		}
-
-		bool AddVertex(Vertex vertex);
-	}
-
-	//something containing faces
-	public interface IFaceHaver {
-
-		IEnumerable<Face> faces {
-			get;
-		}
-
-		bool AddFace(Face face);
 
 	}
 
-	//something containing edges
-	public interface IEdgeHaver {
+	public interface IVertex {
 
-		IEnumerable<Edge> edges {
-			get;
-		}
+		Vector3 position { get; set; }
 
-		bool AddEdge(Edge edge);
 	}
 
-	//haver extensions
-	public static class HaverE {
+	public interface IFace {
 
-		//return true if the vertex is part of this structure, false otherwise
-		public static bool ContainsVertex(this IVertexHaver haver, Vertex vertex) {
-			foreach (Vertex v in haver.vertices) {
-				if (v == vertex) {
-					return true;
-				}
-			}
-			return false;
-		}
+		IVertex a { get; }
+		IVertex b { get; }
+		IVertex c { get; }
 
-		//return true if the face is part of this structure, false otherwise
-		public static bool ContainsFace(this IFaceHaver haver, Face face) {
-			foreach (Face f in haver.faces) {
-				if (f == face) {
-					return true;
-				}
-			}
-			return false;
-		}
+		Vector3 center { get; set; }
 
-		//return true if the edge is part of this structure, false otherwise
-		public static bool ContainsEdge(this IEdgeHaver haver, Edge edge) {
-			foreach (Edge e in haver.edges) {
-				if (e == edge) {
-					return true;
-				}
-			}
-			return false;
-		}
+	}
+
+	public interface IEdge {
+
 	}
 
 }
