@@ -38,7 +38,7 @@ public class NodeGraph {
 	}
 
 	//draw a representation of this graph using Unity's Gizmo system
-	public void DrawGizmos(float nodeRadius, Color nodeColor, Color edgeColor) {
+	public void DrawGizmos(Color nodeColor, Color edgeColor, float nodeRadius = .01f) {
 		foreach (Node node in _nodes) {
 			Gizmos.color = nodeColor;
 			Gizmos.DrawWireSphere(node.position, nodeRadius);
@@ -49,8 +49,8 @@ public class NodeGraph {
 		}
 	}
 	//overload
-	public void DrawGizmos(float nodeRadius = .1f) {
-		DrawGizmos(nodeRadius, new Color(.7f, 1, 1), new Color(1, .7f, 1));
+	public void DrawGizmos(float nodeRadius = .01f) {
+		DrawGizmos(new Color(.7f, 1, 1), new Color(1, .7f, 1), nodeRadius);
 	}
 }
 

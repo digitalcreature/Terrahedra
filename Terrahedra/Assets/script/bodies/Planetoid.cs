@@ -5,13 +5,13 @@ using TG.MeshTools;
 public class Planetoid : MonoBehaviour {
 
 	public Mesh mesh;
-	public float nodeRadius = .1f;
 
 	NodeGraph graph;
+	WorkingMesh workingMesh;
 
 	void OnValidate() {
 		if (mesh != null) {
-			graph = new WorkingMesh(mesh).BuildFaceGraph();
+			workingMesh = new WorkingMesh(mesh);
 		}
 		else {
 			graph = null;
@@ -20,8 +20,11 @@ public class Planetoid : MonoBehaviour {
 
 	void OnDrawGizmosSelected() {
 		Gizmos.matrix = transform.localToWorldMatrix;
+		if (workingMesh != null) {
+			workingMesh.DrawGizmos();
+		}
 		if (graph != null) {
-			graph.DrawGizmos(nodeRadius);
+			graph.DrawGizmos();
 		}
 	}
 
