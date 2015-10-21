@@ -1,17 +1,23 @@
 ﻿using UnityEngine;
 using System.Collections;
-using TG.MeshTools;
+using TG.Topography;
 
+[ExecuteInEditMode]
 public class Planetoid : MonoBehaviour {
 
 	public Mesh mesh;
 
-	NodeGraph graph;
-	MeshGraph workingMesh;
+	MeshFilter filter;
+	Graph graph;
+
+	void OnEnable() {
+		filter = GetComponent<MeshFilter>();
+	}
 
 	void OnValidate() {
+		filter.sharedMesh = mesh;
 		if (mesh != null) {
-			workingMesh = new MeshGraph(mesh);
+			graph = new Graph(mesh).BuildFacesByEdgesGraph();
 		}
 		else {
 			graph = null;
@@ -20,9 +26,6 @@ public class Planetoid : MonoBehaviour {
 
 	void OnDrawGizmosSelected() {
 		Gizmos.matrix = transform.localToWorldMatrix;
-		if (workingMesh != null) {
-			workingMesh.DrawGizmos();
-		}
 		if (graph != null) {
 			graph.DrawGizmos();
 		}
