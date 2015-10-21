@@ -63,6 +63,7 @@ namespace TG.MeshTools {
 				else {
 					face = new Face(this, a, b, c);
 					faceSet.Add(face);
+					faceCache[tri] = face;
 				}
 				return face;
 			}
