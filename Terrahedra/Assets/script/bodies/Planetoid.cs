@@ -7,11 +7,11 @@ public class Planetoid : MonoBehaviour {
 	public Mesh mesh;
 
 	NodeGraph graph;
-	WorkingMesh workingMesh;
+	MeshGraph workingMesh;
 
 	void OnValidate() {
 		if (mesh != null) {
-			workingMesh = new WorkingMesh(mesh);
+			workingMesh = new MeshGraph(mesh);
 		}
 		else {
 			graph = null;
