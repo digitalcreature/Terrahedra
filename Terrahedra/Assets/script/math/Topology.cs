@@ -121,46 +121,30 @@ namespace TG.Topography {
 			throw new ArgumentException("Cannot create edge: at least one vertex not belong to this graph.");
 		}
 
-		//build a graph of the faces of this graph along edges
-		public Graph BuildFacesByEdgesGraph() {
-			Graph graph = new Graph();
-			Dictionary<Face, IVertex> faceVertices = new Dictionary<Face, IVertex>();
+		public Mesh BuildMesh(bool smoothNormals = true) {
+			Mesh mesh = new Mesh();
+			int vertexCount = faceSet.Count * 3;
+			Vector3[] mVerts = new Vector3[vertexCount];
+			Vector3[] mNorms = new Vector3[vertexCount];
+			int[] mTris = new int[vertexCount];
+			int v = 0;
 			foreach (Face face in faceSet) {
-				IVertex faceVertex = graph.AddVertex(face.center);
-				faceVertices[face] = faceVertex;
-			}
-			foreach (Face face in faceSet) {
-				IVertex faceVertex = faceVertices[face];
-				foreach (Edge edge in face.edges) {
-					foreach (Face neighbor in edge.faces) {
-						if (neighbor != face) {
-							graph.AddEdge(faceVertex, faceVertices[neighbor]);
-						}
+				foreach (Vertex vertex in face.vertices) {
+					mVerts[v] = vertex.position;
+					if (smoothNormals) {
+						mNorms[v] = vertex.normal;
 					}
+					else {
+						mNorms[v] = face.normal;
+					}
+					mTris[v] = v;
+					v ++;
 				}
 			}
-			return graph;
-		}
-
-		//build a graph of the faces of this graph along vertices
-		public Graph BuildFacesByVerticesGraph() {
-			Graph graph = new Graph();
-			Dictionary<Face, IVertex> faceVertices = new Dictionary<Face, IVertex>();
-			foreach (Face face in faceSet) {
-				IVertex faceVertex = graph.AddVertex(face.center);
-				faceVertices[face] = faceVertex;
-			}
-			foreach (Face face in faceSet) {
-				IVertex faceVertex = faceVertices[face];
-				foreach (IVertex vertex in face.vertices) {
-					foreach (Face neighbor in vertex.faces) {
-						if (neighbor != face) {
-							graph.AddEdge(faceVertex, faceVertices[neighbor]);
-						}
-					}
-				}
-			}
-			return graph;
+			mesh.vertices = mVerts;
+			mesh.triangles = mTris;
+			mesh.normals = mNorms;
+			return mesh;
 		}
 
 		//draw this graph with unity3d's gizmo system
