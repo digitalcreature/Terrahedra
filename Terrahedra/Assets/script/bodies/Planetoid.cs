@@ -10,14 +10,10 @@ public class Planetoid : MonoBehaviour {
 	public bool smoothNormals = true;
 	public Mesh output;
 
-	MeshFilter filter;
 	Graph graph;
 
-	void OnEnable() {
-		filter = GetComponent<MeshFilter>();
-	}
-
 	void OnValidate() {
+		MeshFilter filter = GetComponent<MeshFilter>();
 		filter.sharedMesh = mesh;
 		if (mesh != null) {
 			graph = new Graph(mesh);
