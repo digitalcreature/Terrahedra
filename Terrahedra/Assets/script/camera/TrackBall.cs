@@ -13,9 +13,10 @@ public class TrackBall : MonoBehaviour {
 
 	void Update() {
 		if (Input.GetMouseButton(1)) {
-			Vector3 mouseDelta = new Vector3(Input.GetAxis("Mouse X"), - Input.GetAxis("Mouse Y"), 0);
+			Vector3 mouseDelta = Input.mousePosition - lastMousePosition;
+			//Vector3 mouseDelta = new Vector3(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"), 0);
 			mouseDelta *= sensitivity;
-			transform.Rotate(mouseDelta.y, mouseDelta.x, 0, Space.Self);
+			transform.Rotate(- mouseDelta.y, mouseDelta.x, 0, Space.Self);
 		}
 		lastMousePosition = Input.mousePosition;
 
