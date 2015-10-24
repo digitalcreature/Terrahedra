@@ -8,7 +8,9 @@ public class Planetoid : MonoBehaviour {
 	public Mesh mesh;
 
 	public bool smoothNormals = true;
-	public Mesh output;
+
+	public MeshFilter output;
+	public float grow = 0;
 
 	Graph graph;
 
@@ -17,8 +19,13 @@ public class Planetoid : MonoBehaviour {
 		filter.sharedMesh = mesh;
 		if (mesh != null) {
 			graph = new Graph(mesh);
-			output = graph.BuildMesh(smoothNormals);
-			output.name = "test";
+			if (output != null) {
+				output.sharedMesh = graph.BuildMesh(smoothNormals,
+					(vertex) => {
+						return vertex.position + vertex.normal * grow;
+					}
+				);
+			}
 		}
 		else {
 			graph = null;
