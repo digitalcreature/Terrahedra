@@ -8,9 +8,9 @@ public class Planetoid : MonoBehaviour {
 	public Mesh mesh;
 
 	public bool smoothNormals = true;
-	public Mesh output;
 
-	public MeshFilter sky;
+	public MeshFilter output;
+	public float grow = 0;
 
 	Graph graph;
 
@@ -19,10 +19,12 @@ public class Planetoid : MonoBehaviour {
 		filter.sharedMesh = mesh;
 		if (mesh != null) {
 			graph = new Graph(mesh);
-			output = graph.BuildInvertedGraph().BuildMesh(smoothNormals);
-			output.name = "test";
-			if (sky != null) {
-				sky.sharedMesh = output;
+			if (output != null) {
+				output.sharedMesh = graph.BuildInvertedGraph().BuildMesh(smoothNormals,
+					(vertex) => {
+						return vertex.position + vertex.normal * grow;
+					}
+				);
 			}
 
 		}

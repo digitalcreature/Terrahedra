@@ -121,17 +121,50 @@ namespace TG.Topography {
 			throw new ArgumentException("Cannot create edge: at least one vertex not belong to this graph.");
 		}
 
-		public Mesh BuildMesh(bool smoothNormals = true) {
+		public Mesh BuildMesh(bool smoothNormals = true, Func <IVertex, Vector3> vertexTransform = null, Func<IFace, Triangle> uvTransform = null, Func<IFace, Triangle> normalTransform = null) {
 			Mesh mesh = new Mesh();
 			int vertexCount = faceSet.Count * 3;
 			Vector3[] mVerts = new Vector3[vertexCount];
 			Vector3[] mNorms = new Vector3[vertexCount];
+			Vector2[] mUVs = new Vector2[vertexCount];
 			int[] mTris = new int[vertexCount];
 			int v = 0;
 			foreach (Face face in faceSet) {
+				Triangle normals;
+				if (normalTransform == null) {
+					if (smoothNormals) {
+						normals = new Triangle(
+							face.a.normal,
+							face.b.normal,
+							face.c.normal
+						);
+					}
+					else {
+						normals = new Triangle(
+							face.normal,
+							face.normal,
+							face.normal
+						);
+					}
+				}
+				else {
+					normals = normalTransform(face);
+				}
+				mNorms[v + 0] = normals.a;
+				mNorms[v + 1] = normals.b;
+				mNorms[v + 2] = normals.c;
+				Triangle uvs;
+				if (uvTransform == null) {
+					uvs = new Triangle(Vector3.zero, Vector3.zero, Vector3.zero);
+				}
+				else {
+					uvs = uvTransform(face);
+				}
+				mUVs[v + 0] = (Vector2) uvs.a;
+				mUVs[v + 1] = (Vector2) uvs.b;
+				mUVs[v + 2] = (Vector2) uvs.c;
 				foreach (Vertex vertex in face.vertices) {
-					mVerts[v] = vertex.position;
-					mNorms[v] = smoothNormals ? vertex.normal : face.normal;
+					mVerts[v] = vertexTransform == null ? vertex.position : vertexTransform(vertex);
 					mTris[v] = v;
 					v ++;
 				}
@@ -139,6 +172,7 @@ namespace TG.Topography {
 			mesh.vertices = mVerts;
 			mesh.triangles = mTris;
 			mesh.normals = mNorms;
+			mesh.uv = mUVs;
 			return mesh;
 		}
 
@@ -182,7 +216,7 @@ namespace TG.Topography {
 			DrawGizmos(new Color(0.7f, 1, 1), new Color(1, 0.7f, 1), new Color(1, 1, 0.7f), dotRadius, normalLength);
 		}
 
-		class Vertex : MeshComponent, IVertex {
+		class Vertex : GraphComponent, IVertex {
 
 			HashSet<Face> faceSet;
 			public IEnumerable<IFace> faces {
@@ -233,7 +267,7 @@ namespace TG.Topography {
 			}
 		}
 
-		class Face : MeshComponent, IFace {
+		class Face : GraphComponent, IFace {
 
 			public readonly Vertex a, b, c;
 			public IEnumerable<IVertex> vertices {
@@ -292,7 +326,7 @@ namespace TG.Topography {
 
 		}
 
-		class Edge : MeshComponent, IEdge {
+		class Edge : GraphComponent, IEdge {
 
 			public readonly Vertex a, b;
 			public IEnumerable<IVertex> vertices {
@@ -352,11 +386,11 @@ namespace TG.Topography {
 
 		}
 
-		abstract class MeshComponent : IMeshComponent {
+		abstract class GraphComponent : IGraphComponent {
 
 			public Graph graph { get; private set; }
 
-			public MeshComponent(Graph graph) {
+			public GraphComponent(Graph graph) {
 				this.graph = graph;
 			}
 
@@ -364,7 +398,7 @@ namespace TG.Topography {
 
 	}
 
-	public interface IVertex : IMeshComponent {
+	public interface IVertex : IGraphComponent {
 
 		IEnumerable<IFace> faces { get; }
 
@@ -376,7 +410,7 @@ namespace TG.Topography {
 
 	}
 
-	public interface IFace : IMeshComponent {
+	public interface IFace : IGraphComponent {
 
 		IEnumerable<IVertex> vertices { get; }
 
@@ -390,7 +424,7 @@ namespace TG.Topography {
 
 	}
 
-	public interface IEdge : IMeshComponent {
+	public interface IEdge : IGraphComponent {
 
 		IEnumerable<IVertex> vertices { get; }
 
@@ -404,7 +438,7 @@ namespace TG.Topography {
 
 	}
 
-	public interface IMeshComponent {
+	public interface IGraphComponent {
 
 		Graph graph { get; }
 
