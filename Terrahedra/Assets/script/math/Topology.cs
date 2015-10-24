@@ -158,7 +158,7 @@ namespace TG.Topography {
 		}
 
 		//draw this graph with unity3d's gizmo system
-		public void DrawGizmos(Color vertexColor, Color faceColor, Color edgeColor, float dotRadius = 0.005f, float normalLength = .05f) {
+		public void DrawGizmos(Color vertexColor, Color faceColor, Color edgeColor, float dotRadius = 0.05f, float normalLength = .25f) {
 			Matrix4x4 mat = Handles.matrix;
 			Handles.matrix = Gizmos.matrix;
 			Handles.color = vertexColor;
@@ -173,14 +173,12 @@ namespace TG.Topography {
 			}
 			Handles.color = edgeColor;
 			foreach (Edge edge in edgeSet) {
-				Handles.DotCap(0, edge.center, Quaternion.identity, dotRadius);
 				Handles.DrawLine(edge.a.position, edge.b.position);
-				Handles.DrawLine(edge.center, edge.center + edge.normal * normalLength);
 			}
 			Handles.matrix = mat;
 
 		}
-		public void DrawGizmos(float dotRadius = 0.005f, float normalLength = .05f) {
+		public void DrawGizmos(float dotRadius = 0.05f, float normalLength = .25f) {
 			DrawGizmos(new Color(0.7f, 1, 1), new Color(1, 0.7f, 1), new Color(1, 1, 0.7f), dotRadius, normalLength);
 		}
 
