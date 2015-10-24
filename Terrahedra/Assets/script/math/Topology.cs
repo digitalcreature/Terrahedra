@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using System.Collections.Generic;
 using System.Collections;
 using System;
@@ -90,7 +92,6 @@ namespace TG.Topography {
 			}
 			return vertex;
 		}
-
 		//add face to this graph
 		public IFace AddFace(IVertex vertA, IVertex vertB, IVertex vertC) {
 			if (vertA.graph == this && vertB.graph == this && vertC.graph == this) {
@@ -111,7 +112,6 @@ namespace TG.Topography {
 			}
 			throw new ArgumentException("Cannot create face: at least one vertex not belong to this graph.");
 		}
-
 		//add edge to this graph
 		public IEdge AddEdge(IVertex vertA, IVertex vertB) {
 			if (vertA.graph == this && vertB.graph == this) {
@@ -130,6 +130,19 @@ namespace TG.Topography {
 				return edge;
 			}
 			throw new ArgumentException("Cannot create edge: at least one vertex not belong to this graph.");
+		}
+
+		//get a vertex on this graph; return null if it doesnt exist
+		public IVertex GetVertex(Vector3 position) {
+			return vertexCache.ContainsKey(position) ? vertexCache[position] : null;
+		}
+		//get a face on this graph; return null if it doesnt exist
+		public IFace GetFace(Triangle triangle) {
+			return faceCache.ContainsKey(triangle) ? faceCache[triangle] : null;
+		}
+		//get a edge on this graph; return null if it doesnt exist
+		public IEdge GetEdge(Segment segment) {
+			return edgeCache.ContainsKey(segment) ? edgeCache[segment] : null;
 		}
 
 		//build a unity mesh from this graph
@@ -220,6 +233,7 @@ namespace TG.Topography {
 
 		//draw this graph with unity3d's gizmo system
 		public void DrawGizmos(Color vertexColor, Color faceColor, Color edgeColor, float dotRadius = 0.05f, float normalLength = .25f) {
+#if UNITY_EDITOR
 			Matrix4x4 mat = Handles.matrix;
 			Handles.matrix = Gizmos.matrix;
 			Handles.color = vertexColor;
@@ -237,7 +251,7 @@ namespace TG.Topography {
 				Handles.DrawLine(edge.a.position, edge.b.position);
 			}
 			Handles.matrix = mat;
-
+#endif
 		}
 		public void DrawGizmos(float dotRadius = 0.05f, float normalLength = .25f) {
 			DrawGizmos(new Color(0.7f, 1, 1), new Color(1, 0.7f, 1), new Color(1, 1, 0.7f), dotRadius, normalLength);

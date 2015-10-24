@@ -9,8 +9,9 @@ public class Planetoid : MonoBehaviour {
 
 	public bool smoothNormals = true;
 
-	public MeshFilter output;
-	public float grow = 0;
+	public MeshFilter water;
+	public float waterGrow = .25f;
+
 
 	Graph graph;
 
@@ -19,10 +20,10 @@ public class Planetoid : MonoBehaviour {
 		filter.sharedMesh = mesh;
 		if (mesh != null) {
 			graph = new Graph(mesh);
-			if (output != null) {
-				output.sharedMesh = graph.BuildMesh(smoothNormals,
+			if (water != null) {
+				water.sharedMesh = graph.BuildMesh(smoothNormals,
 					(vertex) => {
-						return vertex.position + vertex.normal * grow;
+						return vertex.position + vertex.normal * waterGrow;
 					}
 				);
 			}
