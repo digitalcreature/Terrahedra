@@ -131,12 +131,7 @@ namespace TG.Topography {
 			foreach (Face face in faceSet) {
 				foreach (Vertex vertex in face.vertices) {
 					mVerts[v] = vertex.position;
-					if (smoothNormals) {
-						mNorms[v] = vertex.normal;
-					}
-					else {
-						mNorms[v] = face.normal;
-					}
+					mNorms[v] = smoothNormals ? vertex.normal : face.normal;
 					mTris[v] = v;
 					v ++;
 				}
@@ -145,6 +140,21 @@ namespace TG.Topography {
 			mesh.triangles = mTris;
 			mesh.normals = mNorms;
 			return mesh;
+		}
+
+		public Graph BuildInvertedGraph() {
+			Graph graph = new Graph();
+			Dictionary<Vertex, IVertex> verts = new Dictionary<Vertex, IVertex>();
+			foreach (Vertex vertex in vertexSet) {
+				verts[vertex] = graph.AddVertex(vertex.position);
+			}
+			foreach (Edge edge in edgeSet) {
+				graph.AddEdge(verts[edge.a], verts[edge.b]);
+			}
+			foreach (Face face in faceSet) {
+				graph.AddFace(verts[face.b], verts[face.a], verts[face.c]);
+			}
+			return graph;
 		}
 
 		//draw this graph with unity3d's gizmo system
