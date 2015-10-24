@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using System.Collections.Generic;
 using System.Collections;
 using System;
@@ -231,6 +233,7 @@ namespace TG.Topography {
 
 		//draw this graph with unity3d's gizmo system
 		public void DrawGizmos(Color vertexColor, Color faceColor, Color edgeColor, float dotRadius = 0.05f, float normalLength = .25f) {
+#if UNITY_EDITOR
 			Matrix4x4 mat = Handles.matrix;
 			Handles.matrix = Gizmos.matrix;
 			Handles.color = vertexColor;
@@ -248,7 +251,7 @@ namespace TG.Topography {
 				Handles.DrawLine(edge.a.position, edge.b.position);
 			}
 			Handles.matrix = mat;
-
+#endif
 		}
 		public void DrawGizmos(float dotRadius = 0.05f, float normalLength = .25f) {
 			DrawGizmos(new Color(0.7f, 1, 1), new Color(1, 0.7f, 1), new Color(1, 1, 0.7f), dotRadius, normalLength);
