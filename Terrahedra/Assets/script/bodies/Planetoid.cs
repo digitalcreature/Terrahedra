@@ -20,13 +20,12 @@ public class Planetoid : MonoBehaviour {
 		if (mesh != null) {
 			graph = new Graph(mesh);
 			if (output != null) {
-				output.sharedMesh = graph.BuildInvertedGraph().BuildMesh(smoothNormals,
+				output.sharedMesh = graph.BuildMesh(smoothNormals,
 					(vertex) => {
 						return vertex.position + vertex.normal * grow;
 					}
 				);
 			}
-
 		}
 		else {
 			graph = null;
