@@ -41,6 +41,7 @@ namespace TG.Topography {
 			}
 		}
 
+		//constructor
 		public Graph() {
 			vertexSet = new HashSet<Vertex>();
 			vertexCache = new Dictionary<Vector3, Vertex>();
@@ -49,11 +50,12 @@ namespace TG.Topography {
 			edgeSet = new HashSet<Edge>();
 			edgeCache = new Dictionary<Segment, Edge>();
 		}
-
-		public Graph(Mesh mesh) : this() {
-			AddMesh(mesh);
+		//constructor with initial mesh(es)
+		public Graph(params Mesh[] meshes) : this() {
+			AddMeshes(meshes);
 		}
 
+		//add mesh geometry to this graph
 		public void AddMesh(Mesh mesh) {
 			Vector3[] mVerts = mesh.vertices;
 			for (int v = 0; v < mVerts.Length; v++) {
@@ -68,7 +70,14 @@ namespace TG.Topography {
 				AddFace(a, b, c);
 			}
 		}
+		//add multiple meshes to this graph
+		public void AddMeshes(params Mesh[] meshes) {
+			foreach (Mesh mesh in meshes) {
+				AddMesh(mesh);
+			}
+		}
 
+		//add vertex to this graph
 		public IVertex AddVertex(Vector3 position) {
 			Vertex vertex;
 			if (vertexCache.ContainsKey(position)) {
@@ -82,6 +91,7 @@ namespace TG.Topography {
 			return vertex;
 		}
 
+		//add face to this graph
 		public IFace AddFace(IVertex vertA, IVertex vertB, IVertex vertC) {
 			if (vertA.graph == this && vertB.graph == this && vertC.graph == this) {
 				Vertex a = (Vertex) vertA;
@@ -102,6 +112,7 @@ namespace TG.Topography {
 			throw new ArgumentException("Cannot create face: at least one vertex not belong to this graph.");
 		}
 
+		//add edge to this graph
 		public IEdge AddEdge(IVertex vertA, IVertex vertB) {
 			if (vertA.graph == this && vertB.graph == this) {
 				Vertex a = (Vertex) vertA;
@@ -121,13 +132,28 @@ namespace TG.Topography {
 			throw new ArgumentException("Cannot create edge: at least one vertex not belong to this graph.");
 		}
 
-		public Mesh BuildMesh(bool smoothNormals = true, Func <IVertex, Vector3> vertexTransform = null, Func<IFace, Triangle> uvTransform = null, Func<IFace, Triangle> normalTransform = null) {
-			Mesh mesh = new Mesh();
+		//build a unity mesh from this graph
+		//not for realtime animation (might be able to optimize but its unliekely)
+		//optional delegates for simple procedural transformation
+		public Mesh BuildMesh(bool smoothNormals = true, Func <IVertex, Vector3> vertexTransform = null, Func<IFace, Triangle> uvTransform = null, Func<IFace, Triangle> normalTransform = null, Mesh mesh = null) {
 			int vertexCount = faceSet.Count * 3;
-			Vector3[] mVerts = new Vector3[vertexCount];
-			Vector3[] mNorms = new Vector3[vertexCount];
-			Vector2[] mUVs = new Vector2[vertexCount];
+			Vector3[] mVerts;
+			Vector3[] mNorms;
+			Vector2[] mUVs;
 			int[] mTris = new int[vertexCount];
+			if (mesh == null) {
+				mesh = new Mesh();
+				mVerts = new Vector3[vertexCount];
+				mNorms = new Vector3[vertexCount];
+				mUVs = new Vector2[vertexCount];
+				mTris = new int[vertexCount];
+			}
+			else {
+				mVerts = mesh.vertices;
+				mNorms = mesh.normals;
+				mUVs = mesh.uv;
+				mTris = mesh.triangles;
+			}
 			int v = 0;
 			foreach (Face face in faceSet) {
 				Triangle normals;
@@ -160,9 +186,9 @@ namespace TG.Topography {
 				else {
 					uvs = uvTransform(face);
 				}
-				mUVs[v + 0] = (Vector2) uvs.a;
-				mUVs[v + 1] = (Vector2) uvs.b;
-				mUVs[v + 2] = (Vector2) uvs.c;
+				mUVs[v + 0] = uvs.a;
+				mUVs[v + 1] = uvs.b;
+				mUVs[v + 2] = uvs.c;
 				foreach (Vertex vertex in face.vertices) {
 					mVerts[v] = vertexTransform == null ? vertex.position : vertexTransform(vertex);
 					mTris[v] = v;
@@ -176,6 +202,7 @@ namespace TG.Topography {
 			return mesh;
 		}
 
+		//build a copy of this graph with inverted face winding/normals
 		public Graph BuildInvertedGraph() {
 			Graph graph = new Graph();
 			Dictionary<Vertex, IVertex> verts = new Dictionary<Vertex, IVertex>();
@@ -216,6 +243,7 @@ namespace TG.Topography {
 			DrawGizmos(new Color(0.7f, 1, 1), new Color(1, 0.7f, 1), new Color(1, 1, 0.7f), dotRadius, normalLength);
 		}
 
+		//nested vertex implementation
 		class Vertex : GraphComponent, IVertex {
 
 			HashSet<Face> faceSet;
@@ -267,6 +295,7 @@ namespace TG.Topography {
 			}
 		}
 
+		//nested face implementation
 		class Face : GraphComponent, IFace {
 
 			public readonly Vertex a, b, c;
@@ -326,6 +355,7 @@ namespace TG.Topography {
 
 		}
 
+		//nested edge implementation
 		class Edge : GraphComponent, IEdge {
 
 			public readonly Vertex a, b;
@@ -386,6 +416,7 @@ namespace TG.Topography {
 
 		}
 
+		//graph componenent base
 		abstract class GraphComponent : IGraphComponent {
 
 			public Graph graph { get; private set; }

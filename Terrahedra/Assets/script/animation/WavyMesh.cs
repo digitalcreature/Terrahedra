@@ -23,16 +23,21 @@ public class WavyMesh : MonoBehaviour {
 		if (filter.mesh.name != this.name) {
 			graph = new Graph(filter.mesh);
 		}
-		filter.mesh = graph.BuildMesh(smoothNormals, 
-			(vertex) => {
-				Vector3 pos = vertex.position * offsetNoiseScale + offsetNoiseOffset;
-				float offset = offsetFactor;
-				offset *= Mathf.PerlinNoise(pos.x, pos.y);
-				offset *= Mathf.PerlinNoise(pos.x, pos.z);
-				offset *= Mathf.PerlinNoise(pos.y, pos.z);
-				return vertex.position + (vertex.normal * amplitude * Mathf.Sin(offset + Time.time * frequency * Mathf.PI * 2));
-			}
+		filter.mesh = graph.BuildMesh(smoothNormals,
+			VertexTransform,
+			null,
+			null,
+			filter.mesh
 		);
 		filter.mesh.name = this.name;
+	}
+
+	Vector3 VertexTransform(IVertex vertex) {
+		Vector3 pos = vertex.position * offsetNoiseScale + offsetNoiseOffset;
+		float offset = offsetFactor;
+		offset *= Mathf.PerlinNoise(pos.x, pos.y);
+		offset *= Mathf.PerlinNoise(pos.x, pos.z);
+		offset *= Mathf.PerlinNoise(pos.y, pos.z);
+		return vertex.position + (vertex.normal * amplitude * Mathf.Sin(offset + Time.time * frequency * Mathf.PI * 2));
 	}
 }
