@@ -1,7 +1,8 @@
-﻿using UnityEngine;
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using UnityEditor;
 #endif
+
+using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
 using System;
@@ -59,17 +60,19 @@ namespace TG.Topography {
 
 		//add mesh geometry to this graph
 		public void AddMesh(Mesh mesh) {
-			Vector3[] mVerts = mesh.vertices;
-			for (int v = 0; v < mVerts.Length; v++) {
-				AddVertex(mVerts[v]);
-			}
-			int[] mTris = mesh.triangles;
-			int t = 0;
-			while (t < mTris.Length) {
-				Vertex a = vertexCache[mVerts[mTris[t ++]]];
-				Vertex b = vertexCache[mVerts[mTris[t ++]]];
-				Vertex c = vertexCache[mVerts[mTris[t ++]]];
-				AddFace(a, b, c);
+			if (mesh != null) {
+				Vector3[] mVerts = mesh.vertices;
+				for (int v = 0; v < mVerts.Length; v++) {
+					AddVertex(mVerts[v]);
+				}
+				int[] mTris = mesh.triangles;
+				int t = 0;
+				while (t < mTris.Length) {
+					Vertex a = vertexCache[mVerts[mTris[t++]]];
+					Vertex b = vertexCache[mVerts[mTris[t++]]];
+					Vertex c = vertexCache[mVerts[mTris[t++]]];
+					AddFace(a, b, c);
+				}
 			}
 		}
 		//add multiple meshes to this graph
