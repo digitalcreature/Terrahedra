@@ -26,7 +26,7 @@ public class CameraZoom : MonoBehaviour {
 	}
 
 	void Update() {
-		zoomTarget -= Input.mouseScrollDelta.y;
+		zoomTarget -= Input.mouseScrollDelta.y * sensitivity;
 		zoomTarget = Mathf.Clamp(zoomTarget, zoomMin, zoomMax);
 		zoom = Mathf.Lerp(zoom, zoomTarget, Time.deltaTime * smoothing);
 	}

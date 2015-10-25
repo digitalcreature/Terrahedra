@@ -13,11 +13,13 @@
     <TargetFrameworkIdentifier>.NETFramework</TargetFrameworkIdentifier>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>Unity Subset v3.5</TargetFrameworkProfile>
-    <CompilerResponseFile></CompilerResponseFile>
+    <CompilerResponseFile>
+    </CompilerResponseFile>
     <UnityProjectType>Game:1</UnityProjectType>
     <UnityBuildTarget>StandaloneLinuxUniversal:25</UnityBuildTarget>
     <UnityVersion>5.2.0f3</UnityVersion>
-    <RootNamespace></RootNamespace>
+    <RootNamespace>
+    </RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -70,6 +72,7 @@
   <ItemGroup>
     <Compile Include="Assets\script\animation\WavyMesh.cs" />
     <Compile Include="Assets\script\bodies\Planetoid.cs" />
+    <Compile Include="Assets\script\bodies\TerrainGenerator.cs" />
     <Compile Include="Assets\script\bodies\Tile.cs" />
     <Compile Include="Assets\script\camera\CameraZoom.cs" />
     <Compile Include="Assets\script\camera\TrackBall.cs" />
