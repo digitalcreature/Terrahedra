@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using TG.Topography;
+using TG.Topology;
 using System.Linq;
 
 public class TerrainGenerator : MonoBehaviour {

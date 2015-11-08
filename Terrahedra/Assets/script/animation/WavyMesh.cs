@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
-using TG.Topography;
+using TG.Topology;
 
 public class WavyMesh : MonoBehaviour {
 
