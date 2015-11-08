@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Collections;
 using System;
 
-namespace TG.Topography {
+namespace TG.Topology {
 
 	public class Graph {
 
@@ -82,7 +82,7 @@ namespace TG.Topography {
 			}
 		}
 
-		//add vertex to this graph
+		//ensure that a vertex at [position] is a part of this graph
 		public IVertex AddVertex(Vector3 position) {
 			Vertex vertex;
 			if (vertexCache.ContainsKey(position)) {
@@ -95,7 +95,7 @@ namespace TG.Topography {
 			}
 			return vertex;
 		}
-		//add face to this graph
+		//ensure that a face between these three vertices is a part of this graph
 		public IFace AddFace(IVertex vertA, IVertex vertB, IVertex vertC) {
 			if (vertA.graph == this && vertB.graph == this && vertC.graph == this) {
 				Vertex a = (Vertex) vertA;
@@ -115,7 +115,13 @@ namespace TG.Topography {
 			}
 			throw new ArgumentException("Cannot create face: at least one vertex not belong to this graph.");
 		}
-		//add edge to this graph
+		public IFace AddFace(Vector3 vertA, Vector3 vertB, Vector3 vertC) {
+			return AddFace(AddVertex(vertA), AddVertex(vertB), AddVertex(vertC));
+		}
+		public IFace AddFace(Triangle triangle) {
+			return AddFace(triangle.a, triangle.b, triangle.c);
+		}
+		//ensure that an edge between these two verticies is a part of this graph
 		public IEdge AddEdge(IVertex vertA, IVertex vertB) {
 			if (vertA.graph == this && vertB.graph == this) {
 				Vertex a = (Vertex) vertA;
@@ -134,6 +140,63 @@ namespace TG.Topography {
 			}
 			throw new ArgumentException("Cannot create edge: at least one vertex not belong to this graph.");
 		}
+		public IEdge AddEdge(Vector3 vertA, Vector3 vertB) {
+			return AddEdge(AddVertex(vertA), AddVertex(vertB));
+		}
+		public IEdge AddEdge(Segment segment) {
+			return AddEdge(segment.a, segment.b);
+		}
+
+		//ensure that a vertex is not a part of this graph
+		public bool RemoveVertex(IVertex vertex) {
+			if (vertex.graph == this) {
+				foreach (Face face in vertex.faces) {
+					RemoveFace(face);
+				}
+				foreach (Edge edge in vertex.edges) {
+					RemoveEdge(edge);
+				}
+				vertexSet.Remove((Vertex) vertex);
+				((Vertex) vertex).Destroy();
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+		//ensure that a face is not a part of this graph
+		public bool RemoveFace(IFace face) {
+			if (face.graph == this) {
+				foreach (Vertex vertex in face.vertices) {
+					vertex.RemoveFace((Face) face);
+				}
+				foreach (Edge edge in face.edges) {
+					edge.RemoveFace((Face) face);
+				}
+				faceSet.Remove((Face) face);
+				faceCache.Remove(face.triangle);
+				((Face) face).Destroy();
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+		//ensure that an edge is not a part of this graph
+		public bool RemoveEdge(IEdge edge) {
+			if (edge.graph == this) {
+				foreach (Face face in edge.faces) {
+					RemoveFace(face);
+				}
+				edgeSet.Remove((Edge) edge);
+				edgeCache.Remove(edge.segment);
+				((Edge) edge).Destroy();
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
 
 		//get a vertex on this graph; return null if it doesnt exist
 		public IVertex GetVertex(Vector3 position) {
@@ -143,15 +206,21 @@ namespace TG.Topography {
 		public IFace GetFace(Triangle triangle) {
 			return faceCache.ContainsKey(triangle) ? faceCache[triangle] : null;
 		}
+		public IFace GetFace(IVertex vertA, IVertex vertB, IVertex vertC) {
+			return GetFace(new Triangle(vertA.position, vertB.position, vertC.position));
+		}
 		//get a edge on this graph; return null if it doesnt exist
 		public IEdge GetEdge(Segment segment) {
 			return edgeCache.ContainsKey(segment) ? edgeCache[segment] : null;
+		}
+		public IEdge GetEdge(IVertex vertA, IVertex vertB) {
+			return GetEdge(new Segment(vertA.position, vertB.position));
 		}
 
 		//build a unity mesh from this graph
 		//not for realtime animation (might be able to optimize but its unliekely)
 		//optional delegates for simple procedural transformation
-		public Mesh BuildMesh(bool smoothNormals = true, Func <IVertex, Vector3> vertexTransform = null, Func<IFace, Triangle> uvTransform = null, Func<IFace, Triangle> normalTransform = null, Mesh mesh = null) {
+		public Mesh BuildMesh(bool smoothNormals = true, Func<IVertex, Vector3> vertexTransform = null, Func<IFace, Triangle> uvTransform = null, Func<IFace, Triangle> normalTransform = null, Mesh mesh = null) {
 			int vertexCount = faceSet.Count * 3;
 			Vector3[] mVerts;
 			Vector3[] mNorms;
@@ -208,7 +277,7 @@ namespace TG.Topography {
 				foreach (Vertex vertex in face.vertices) {
 					mVerts[v] = vertexTransform == null ? vertex.position : vertexTransform(vertex);
 					mTris[v] = v;
-					v ++;
+					v++;
 				}
 			}
 			mesh.vertices = mVerts;
@@ -261,10 +330,10 @@ namespace TG.Topography {
 		}
 
 		//nested vertex implementation
-		class Vertex : GraphComponent, IVertex {
+		class Vertex : GraphComponent<IVertex>, IVertex {
 
 			HashSet<Face> faceSet;
-			public IEnumerable<IFace> faces {
+			public override IEnumerable<IFace> faces {
 				get {
 					foreach (Face face in faceSet) {
 						yield return face;
@@ -273,10 +342,36 @@ namespace TG.Topography {
 			}
 
 			HashSet<Edge> edgeSet;
-			public IEnumerable<IEdge> edges {
+			public override IEnumerable<IEdge> edges {
 				get {
 					foreach (Edge edge in edgeSet) {
 						yield return edge;
+					}
+				}
+			}
+
+			public override IEnumerable<IVertex> neighborsByFaces {
+				get {
+					LinkedList<IVertex> visited = new LinkedList<IVertex>();
+					foreach (IFace face in faces) {
+						foreach (IVertex vertex in face.vertices) {
+							if (vertex != this && !visited.Contains(vertex)) {
+								visited.AddLast(vertex);
+								yield return vertex;
+							}
+						}
+					}
+				}
+			}
+
+			public override IEnumerable<IVertex> neighborsByEdges {
+				get {
+					foreach (IEdge edge in edges) {
+						foreach (IVertex vertex in edge.vertices) {
+							if (vertex != this) {
+								yield return vertex;
+							}
+						}
 					}
 				}
 			}
@@ -307,16 +402,24 @@ namespace TG.Topography {
 				edgeSet.Add(edge);
 			}
 
+			public bool RemoveFace(Face face) {
+				return faceSet.Remove(face);
+			}
+
+			public bool RemoveEdge(Edge edge) {
+				return edgeSet.Remove(edge);
+			}
+
 			public override int GetHashCode() {
 				return position.GetHashCode();
 			}
 		}
 
 		//nested face implementation
-		class Face : GraphComponent, IFace {
+		class Face : GraphComponent<IFace>, IFace {
 
 			public readonly Vertex a, b, c;
-			public IEnumerable<IVertex> vertices {
+			public override IEnumerable<IVertex> vertices {
 				get {
 					yield return a;
 					yield return b;
@@ -325,7 +428,7 @@ namespace TG.Topography {
 			}
 
 			public readonly Edge ab, bc, ca;
-			public IEnumerable<IEdge> edges {
+			public override IEnumerable<IEdge> edges {
 				get {
 					yield return ab;
 					yield return bc;
@@ -351,6 +454,40 @@ namespace TG.Topography {
 				}
 			}
 
+			public float area {
+				get {
+					return triangle.area;
+				}
+			}
+
+			public override IEnumerable<IFace> neighborsByVertices {
+				get {
+					LinkedList<IFace> visited = new LinkedList<IFace>();
+					foreach (IVertex vertex in vertices) {
+						foreach (IFace face in vertex.faces) {
+							if (face != this && !visited.Contains(face)) {
+								visited.AddLast(face);
+								yield return face;
+							}
+						}
+					}
+				}
+			}
+
+			public override IEnumerable<IFace> neighborsByEdges {
+				get {
+					LinkedList<IFace> visited = new LinkedList<IFace>();
+					foreach (IEdge edge in edges) {
+						foreach (IFace face in edge.faces) {
+							if (face != this && !visited.Contains(face)) {
+								visited.AddLast(face);
+								yield return face;
+							}
+						}
+					}
+				}
+			}
+
 			public Face(Graph graph, Vertex a, Vertex b, Vertex c) : base(graph) {
 				this.a = a;
 				this.b = b;
@@ -373,10 +510,10 @@ namespace TG.Topography {
 		}
 
 		//nested edge implementation
-		class Edge : GraphComponent, IEdge {
+		class Edge : GraphComponent<IEdge>, IEdge {
 
 			public readonly Vertex a, b;
-			public IEnumerable<IVertex> vertices {
+			public override IEnumerable<IVertex> vertices {
 				get {
 					yield return a;
 					yield return b;
@@ -384,7 +521,7 @@ namespace TG.Topography {
 			}
 
 			HashSet<Face> faceSet;
-			public IEnumerable<IFace> faces {
+			public override IEnumerable<IFace> faces {
 				get {
 					foreach (Face face in faceSet) {
 						yield return face;
@@ -404,6 +541,12 @@ namespace TG.Topography {
 				}
 			}
 
+			public float length {
+				get {
+					return segment.length;
+				}
+			}
+
 			public Vector3 normal {
 				get {
 					Vector3 normal = Vector3.zero;
@@ -411,6 +554,32 @@ namespace TG.Topography {
 						normal += face.normal;
 					}
 					return normal.normalized;
+				}
+			}
+
+			public override IEnumerable<IEdge> neighborsByVertices {
+				get {
+					foreach (IVertex vertex in vertices) {
+						foreach (IEdge edge in vertex.edges) {
+							if (edge != this) {
+								yield return edge;
+							}
+						}
+					}
+				}
+			}
+
+			public override IEnumerable<IEdge> neighborsByFaces {
+				get {
+					LinkedList<IEdge> visited = new LinkedList<IEdge>();
+					foreach (IFace face in faces) {
+						foreach (IEdge edge in face.edges) {
+							if (edge != this && !visited.Contains(edge)) {
+								visited.AddLast(edge);
+								yield return edge;
+							}
+						}
+					}
 				}
 			}
 
@@ -427,6 +596,10 @@ namespace TG.Topography {
 				faceSet.Add(face);
 			}
 
+			public bool RemoveFace(Face face) {
+				return faceSet.Remove(face);
+			}
+
 			public override int GetHashCode() {
 				return segment.GetHashCode();
 			}
@@ -434,7 +607,7 @@ namespace TG.Topography {
 		}
 
 		//graph componenent base
-		abstract class GraphComponent : IGraphComponent {
+		abstract class GraphComponent<T> : IGraphComponent<T> where T : IGraphComponent<T> {
 
 			public Graph graph { get; private set; }
 
@@ -442,15 +615,50 @@ namespace TG.Topography {
 				this.graph = graph;
 			}
 
+			public void Destroy() {
+				graph = null;
+			}
+
+			public virtual IEnumerable<IVertex> vertices {
+				get {
+					yield break;
+				}
+			}
+
+			public virtual IEnumerable<IFace> faces {
+				get {
+					yield break;
+				}
+			}
+
+			public virtual IEnumerable<IEdge> edges {
+				get {
+					yield break;
+				}
+			}
+
+			public virtual IEnumerable<T> neighborsByVertices {
+				get {
+					yield break;
+				}
+			}
+
+			public virtual IEnumerable<T> neighborsByFaces {
+				get {
+					yield break;
+				}
+			}
+
+			public virtual IEnumerable<T> neighborsByEdges {
+				get {
+					yield break;
+				}
+			}
 		}
 
 	}
 
-	public interface IVertex : IGraphComponent {
-
-		IEnumerable<IFace> faces { get; }
-
-		IEnumerable<IEdge> edges { get; }
+	public interface IVertex : IGraphComponent<IVertex> {
 
 		Vector3 position { get; }
 
@@ -458,11 +666,7 @@ namespace TG.Topography {
 
 	}
 
-	public interface IFace : IGraphComponent {
-
-		IEnumerable<IVertex> vertices { get; }
-
-		IEnumerable<IEdge> edges { get; }
+	public interface IFace : IGraphComponent<IFace> {
 
 		Triangle triangle { get; }
 
@@ -470,13 +674,11 @@ namespace TG.Topography {
 
 		Vector3 normal { get; }
 
+		float area { get; }
+
 	}
 
-	public interface IEdge : IGraphComponent {
-
-		IEnumerable<IVertex> vertices { get; }
-
-		IEnumerable<IFace> faces { get; }
+	public interface IEdge : IGraphComponent<IEdge> {
 
 		Segment segment { get; }
 
@@ -484,11 +686,24 @@ namespace TG.Topography {
 
 		Vector3 normal { get; }
 
+		float length { get; }
 	}
 
-	public interface IGraphComponent {
+	public interface IGraphComponent<T> where T : IGraphComponent<T> {
 
 		Graph graph { get; }
+
+		IEnumerable<IVertex> vertices { get; }
+
+		IEnumerable<IFace> faces { get; }
+
+		IEnumerable<IEdge> edges { get; }
+
+		IEnumerable<T> neighborsByVertices { get; }
+
+		IEnumerable<T> neighborsByFaces { get; }
+
+		IEnumerable<T> neighborsByEdges { get; }
 
 	}
 
@@ -504,8 +719,20 @@ namespace TG.Topography {
 
 		public Vector3 normal {
 			get {
-				return Vector3.Cross(b - a, c - a).normalized;
+				return cross.normalized;
 			}
+		}
+
+		public float area {
+			get {
+				return cross.magnitude;
+			}
+		}
+
+		Vector3 cross {
+			get {
+				return Vector3.Cross(b - a, c - a);
+            }
 		}
 
 		public Triangle(IVertex a, IVertex b, IVertex c) : this(a.position, b.position, c.position) { }
@@ -545,7 +772,7 @@ namespace TG.Topography {
 		}
 
 		public override int GetHashCode() {
-			return a.GetHashCode() ^ b.GetHashCode() ^ c.GetHashCode() ^ normal.GetHashCode();
+			return a.GetHashCode() ^ b.GetHashCode() ^ c.GetHashCode() ^ cross.GetHashCode();
 		}
 
 	}
@@ -557,6 +784,12 @@ namespace TG.Topography {
 		public Vector3 center {
 			get {
 				return (a + b) / 2;
+			}
+		}
+
+		public float length {
+			get {
+				return (a - b).magnitude;
 			}
 		}
 
